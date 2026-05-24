@@ -1,0 +1,109 @@
+-- =================================================================
+-- UNIFIED TEST HUB (UI + FUNCTIONS COMBINED)
+-- =================================================================
+
+-- 1. INITIALIZE UI ENVIRONMENT
+local Library = loadstring(game:HttpGet('https://raw.githubusercontent.com/deividcomsono/Obsidian/main/Library.lua'))()
+local ThemeManager = loadstring(game:HttpGet('https://raw.githubusercontent.com/deividcomsono/Obsidian/main/addons/ThemeManager.lua'))()
+local SaveManager = loadstring(game:HttpGet('https://raw.githubusercontent.com/deividcomsono/Obsidian/main/addons/SaveManager.lua'))()
+
+local Window = Library:CreateWindow({
+    AutoShow = true,
+    Title = 'Unified Test Hub',
+    Footer = 'UI + Logic Combined',
+    ShowCustomCursor = true,
+    Center = true,
+})
+
+-- 2. CREATE TABS & GROUPS
+local MainTab = Window:AddTab('Main', 'house')
+local CombatGroup = MainTab:AddLeftGroupbox('Combat Functions')
+local MovementGroup = MainTab:AddRightGroupbox('Movement Functions')
+
+-- 3. GLOBAL CONFIGURATION ENVIRONMENT (The Brain)
+getgenv().Config = {
+    KillAura = false,
+    SpeedHack = false,
+    WalkSpeedValue = 16
+}
+
+-- =================================================================
+-- 4. COMBINING THE LOGIC (Embedding Functions Directly into Toggles)
+-- =================================================================
+
+-- COMBAT TOGGLE: Kill Aura
+CombatGroup:AddToggle('KillAuraToggle', {
+    Text = 'Kill Aura',
+    Default = false,
+    Tooltip = 'Automatically damages nearby players'
+}):OnChanged(function(state)
+    getgenv().Config.KillAura = state
+    
+    -- Function logic is embedded right inside the toggle using a background thread
+    task.spawn(function()
+        while getgenv().Config.KillAura do
+            task.wait(0.5) -- Attack pacing loop
+            
+            local localPlayer = game:GetService("Players").LocalPlayer
+            if localPlayer and localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                local myPos = localPlayer.Character.HumanoidRootPart.Position
+                
+                -- Search for nearby targets (Backend Logic)
+                for _, player in ipairs(game:GetService("Players"):GetPlayers()) do
+                    if player ~= localPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                        local targetPos = player.Character.HumanoidRootPart.Position
+                        local distance = (myPos - targetPos).Magnitude
+                        
+                        -- If target is within a 15-stud range, simulate an attack
+                        if distance <= 15 then
+                            print("Kill Aura: Target found! Attacking " .. player.Name .. " at distance: " .. math.floor(distance))
+                            -- In a real game exploit, you would fire the game's remote event here:
+                            -- ReplicatedStorage.Remotes.DamageEvent:FireServer(player, 10)
+                        end
+                    end
+                end
+            end
+        end
+    end)
+end)
+
+-- MOVEMENT SLIDER & TOGGLE: WalkSpeed Hack
+MovementGroup:AddSlider('SpeedSlider', {
+    Text = 'Custom Speed',
+    Min = 16,
+    Default = 50,
+    Max = 150,
+    Rounding = 0
+}):OnChanged(function(value)
+    getgenv().Config.WalkSpeedValue = value
+end)
+
+MovementGroup:AddToggle('SpeedToggle', {
+    Text = 'Enable Speed Hack',
+    Default = false
+}):OnChanged(function(state)
+    getgenv().Config.SpeedHack = state
+    
+    task.spawn(function()
+        local localPlayer = game:GetService("Players").LocalPlayer
+        
+        while getgenv().Config.SpeedHack do
+            task.wait(0.1) -- Fast refresh loop to bypass game resets
+            
+            if localPlayer.Character and localPlayer.Character:FindFirstChild("Humanoid") then
+                -- Force the character's speed to match the UI slider value
+                localPlayer.Character.Humanoid.WalkSpeed = getgenv().Config.WalkSpeedValue
+            end
+        end
+        
+        -- Reset back to standard Roblox speed when toggled off
+        if not getgenv().Config.SpeedHack and localPlayer.Character and localPlayer.Character:FindFirstChild("Humanoid") then
+            localPlayer.Character.Humanoid.WalkSpeed = 16
+        end
+    end)
+end)
+
+-- 5. FINALIZE MENU
+ThemeManager:SetLibrary(Library)
+SaveManager:SetLibrary(Library)
+print("✅ Unified Script Loaded! Functions and UI are synced.")
